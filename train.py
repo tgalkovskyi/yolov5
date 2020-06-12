@@ -67,7 +67,11 @@ def train(hyp):
     with open(opt.data) as f:
         data_dict = yaml.load(f, Loader=yaml.FullLoader)  # model dict
     train_path = data_dict['train']
+    if 'train_labels' in data_dict:
+        train_labels_path = data_dict['train_labels']
     test_path = data_dict['val']
+    if 'val_labels' in data_dict:
+        test_labels_path = data_dict['val_labels']
     nc = 1 if opt.single_cls else int(data_dict['nc'])  # number of classes
 
     # Remove previous results
@@ -154,7 +158,7 @@ def train(hyp):
         model = torch.nn.parallel.DistributedDataParallel(model)
 
     # Dataset
-    dataset = LoadImagesAndLabels(train_path, imgsz, batch_size,
+    dataset = LoadImagesAndLabels(train_path, train_labels_path, imgsz, batch_size,
                                   augment=True,
                                   hyp=hyp,  # augmentation hyperparameters
                                   rect=opt.rect,  # rectangular training
@@ -174,7 +178,7 @@ def train(hyp):
                                              collate_fn=dataset.collate_fn)
 
     # Testloader
-    testloader = torch.utils.data.DataLoader(LoadImagesAndLabels(test_path, imgsz_test, batch_size,
+    testloader = torch.utils.data.DataLoader(LoadImagesAndLabels(test_path, test_labels_path, imgsz_test, batch_size,
                                                                  hyp=hyp,
                                                                  rect=True,
                                                                  cache_images=opt.cache_images,

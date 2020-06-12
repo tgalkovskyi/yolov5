@@ -256,7 +256,7 @@ class LoadStreams:  # multiple IP or RTSP cameras
 
 
 class LoadImagesAndLabels(Dataset):  # for training/testing
-    def __init__(self, path, img_size=416, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
+    def __init__(self, path, labels_path=None, img_size=416, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
                  cache_images=False, single_cls=False, pad=0.0):
         try:
             path = str(Path(path))  # os-agnostic
@@ -273,6 +273,9 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         except:
             raise Exception('Error loading data from %s. See %s' % (path, help_url))
 
+        if labels_path is None:
+            labels_path = path.replace('images', 'labels')
+
         n = len(self.img_files)
         assert n > 0, 'No images found in %s. See %s' % (path, help_url)
         bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
@@ -288,7 +291,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.mosaic = self.augment and not self.rect  # load 4 images at a time into a mosaic (only during training)
 
         # Define labels
-        self.label_files = [x.replace('images', 'labels').replace(os.path.splitext(x)[-1], '.txt')
+        self.label_files = [os.path.join(labels_path, x.replace(os.path.splitext(x)[-1], '.txt'))
                             for x in self.img_files]
 
         # Rectangular Training  https://github.com/ultralytics/yolov3/issues/232
@@ -337,7 +340,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 self.labels = x
                 labels_loaded = True
         else:
-            s = path.replace('images', 'labels')
+            s = labels_path
 
         pbar = tqdm(self.label_files)
         for i, file in enumerate(pbar):
