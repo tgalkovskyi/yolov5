@@ -6,6 +6,7 @@ import argparse
 
 from utils.datasets import *
 from utils.utils import *
+import pandas as pd
 
 
 def detect(source, weights, half, imgsz):
@@ -75,30 +76,40 @@ def detect(source, weights, half, imgsz):
 
 
 def save_output(source, imgsz, out, predictions):
-    if os.path.exists(out):
-        shutil.rmtree(out)  # delete output folder
-    os.makedirs(out)  # make new output folder
+    if out:
+        if os.path.exists(out):
+            shutil.rmtree(out)  # delete output folder
+        os.makedirs(out)  # make new output folder
 
     # Set Dataloader
     dataset = LoadImages(source, img_size=imgsz)
-    with open('submission.csv', 'w') as f:
-        f.write('image_id,PredictionString\n')
-        for path, img, im0s, _ in dataset:
-            # Locate tuple 
-            pstr = []
+    results = []
+    for path, img, im0s, _ in dataset:
+        # Locate tuple 
+        pstr = []
 
+        save_path = ''
+        if out:
             save_path = str(Path(out) / Path(path).name)
-            for pred in predictions[path]:
-                pstr.append('%0.2f %d %d %d %d' % (pred[0], pred[1], pred[2], pred[3], pred[4]))
+        for pred in predictions[path]:
+            pstr.append('%0.2f %d %d %d %d' % (pred[0], pred[1], pred[2], pred[3], pred[4]))
+            if out:
                 label = '%0.2f' % pred[0]
                 plot_one_box((pred[1], pred[2], pred[1]+pred[3], pred[2]+pred[4]), im0s, label=label, color=(128, 128, 128), line_thickness=3)
-            # # Add bbox to image
-            # label = '%s %.2f' % (names[int(cls)], conf)
-            # Save results (image with detections)
+        # # Add bbox to image
+        # label = '%s %.2f' % (names[int(cls)], conf)
+        # Save results (image with detections)
+        if out:
             cv2.imwrite(save_path, im0s)
-            f.write('%s,%s\n' % (os.path.splitext(os.path.basename(path))[0], ' '.join(pstr)))
+        result = {
+            'image_id': os.path.splitext(os.path.basename(path))[0],
+            'PredictionString': ' '.join(pstr),
+        }
+        results.append(result)
 
-    print('Results saved to %s' % os.getcwd() + os.sep + out)
+    test_df = pd.DataFrame(results, columns=['image_id', 'PredictionString'])
+    test_df.head()
+    test_df.to_csv('submission.csv', index=False)
 
 
 if __name__ == '__main__':
